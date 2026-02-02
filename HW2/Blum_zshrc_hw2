@@ -1,0 +1,32 @@
+PROMPT='%F{cyan}[%n] %F{yellow}%~ %f%% '
+
+export CLICOLOR=1
+export LSCOLORS=Gxfxcxdxbxegedabagacad
+
+export EDITOR='vim'
+export VISUAL='vim'
+
+alias ll='ls -lhG'
+alias la='ls -ahG'
+alias cgsdir='cd ~/GEOS694_CIG_BLUM'
+alias standardenv ='mamba activate orbisenv'
+export PYENV_ROOT="$HOME/.pyenv"
+command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+export PATH="/opt/homebrew/bin:$PATH"
+alias watchman='/opt/homebrew/bin/watchman'
+
+
+# >>> mamba initialize >>>
+# !! Contents within this block are managed by 'mamba shell init' !!
+export MAMBA_EXE='/opt/homebrew/bin/mamba';
+export MAMBA_ROOT_PREFIX='/Users/ed/.local/share/mamba';
+__mamba_setup="$("$MAMBA_EXE" shell hook --shell zsh --root-prefix "$MAMBA_ROOT_PREFIX" 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__mamba_setup"
+else
+    alias mamba="$MAMBA_EXE"  # Fallback on help from mamba activate
+fi
+unset __mamba_setup
+# <<< mamba initialize <<<
