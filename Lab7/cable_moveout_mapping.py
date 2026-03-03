@@ -12,6 +12,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 model = TauPyModel(model="ak135")
 
+
 def load_coords(filepath):
     df = pd.read_csv(filepath, sep=r'\s+', header=None, 
                      names=['lon','lat','cha','dep']).dropna()
@@ -27,6 +28,7 @@ def load_coords(filepath):
     df['dist_km'] = np.insert(R * c, 0, 0).cumsum()
     return df
 
+    
 event_data = {
     "2023-12-31-02-11-56.537000ML1.5": {"lat": 59.832, 
                                         "lon": -151.569, 
@@ -60,13 +62,15 @@ event_data = {
                                         "dep": 71500.0}
 }
 
+
 def analyze_cable_moveout(coords_df, event_dict):
     p1 = coords_df.iloc[0]
     p2 = coords_df.iloc[-1]
     results = []
-    
-print(f"{'Event ID':<32} | {'Phase':<5} | {'T_Start':<8} | "
-      f"{'T_End':<8} | {'Diff (s)':<8}\n" + ("-" * 75))
+
+
+    print(f"{'Event ID':<32} | {'Phase':<5} | {'T_Start':<8} | "
+          f"{'T_End':<8} | {'Diff (s)':<8}\n" + ("-" * 75))
 
     for eid, info in event_dict.items():
         z_km = info['dep'] / 1000.0
@@ -108,6 +112,7 @@ print(f"{'Event ID':<32} | {'Phase':<5} | {'T_Start':<8} | "
                   f"{'N/A':>8} | {'N/A':>8}")
     
     return results
+
 
 base_dir = "/Users/ed/research_code/das"
 kkfls_coords = load_coords(os.path.join(base_dir, 
