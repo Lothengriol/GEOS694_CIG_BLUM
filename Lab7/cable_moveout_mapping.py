@@ -14,22 +14,95 @@ from obspy.taup import TauPyModel
 warnings.filterwarnings("ignore", category=UserWarning)
 
 model = TauPyModel(model="ak135")
+base_dir = "/Users/ed/research_code/das"
+kkfls_coords = load_coords(os.path.join(base_dir,
+                    'das_coords_bathymetry/KKFLS_coords.xycz'))
+moveout_data = analyze_cable_moveout(kkfls_coords, event_data)
 
 
 def load_coords(filepath):
+    """
+    Loads an xycz bathymetry file (looks like a CSV) and computes
+    distance along the cable in km using the Haversine formula.
+    """
+    
     df = pd.read_csv(filepath, sep=r'\s+', header=None,
                      names=['lon','lat','cha','dep']).dropna()
-    df['lon'] = df['lon'].apply(lambda x: x - 360 if x > 180 else x)
-    R = 6371.0
+
     lat, lon = np.radians(df['lat'].values), np.radians(df['lon'].values)
     dlat, dlon = np.diff(lat), np.diff(lon)
+    
+    R = 6371.0
     a = (np.sin(dlat / 2)**2
          + np.cos(lat[:-1])
          * np.cos(lat[1:])
          * np.sin(dlon / 2)**2)
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
+    
     df['dist_km'] = np.insert(R * c, 0, 0).cumsum()
+    
     return df
+
+
+def analyze_cable_moveout(coords_df, event_dict):
+    """
+    Calculates P and S wave travel times across the cable 
+    for the given coordinate file and event dictionary.
+    """
+    
+    p1 = coords_df.iloc[0]
+    p2 = coords_df.iloc[-1]
+    results = []
+
+    # This print statement outputs a table of information to supplement
+    # the later plots in a more I/O format.
+    print(f"{'Event ID':<32} | {'Phase':<5} | {'T_Start':<8} | "
+          f"{'T_End':<8} | {'Diff (s)':<8}\n" + ("-" * 75))
+
+    for eid, info in event_dict.items():
+        z_km = info['dep'] / 1000.0
+        dist1 = locations2degrees(info['lat'],
+                                  info['lon'],
+                                  p1['lat'],
+                                  p1['lon'])
+        dist2 = locations2degrees(info['lat'],
+                                  info['lon'],
+                                  p2['lat'],
+                                  p2['lon'])
+
+        # P-wave arrival calculation
+        p_phases = ["p", "P", "Pn", "Pg"]
+        arr1_p = model.get_travel_times(z_km, dist1, phase_list=p_phases)
+        arr2_p = model.get_travel_times(z_km, dist2, phase_list=p_phases)
+        t1, t2, phase_used = None, None, None
+
+        if len(arr1_p) > 0 and len(arr2_p) > 0:
+            t1, t2 = arr1_p[0].time, arr2_p[0].time
+            phase_used = "P"
+        
+        else:
+            # S-wave arrival calculation
+            s_phases = ["s", "S", "Sn", "Sg"]
+            arr1_s = model.get_travel_times(z_km, dist1, phase_list=s_phases)
+            arr2_s = model.get_travel_times(z_km, dist2, phase_list=s_phases)
+            
+            if len(arr1_s) > 0 and len(arr2_s) > 0:
+                t1, t2 = arr1_s[0].time, arr2_s[0].time
+                phase_used = "S"
+
+        if t1 is not None and t2 is not None:
+            diff = abs(t1 - t2)
+            results.append({'id': eid, 'phase': phase_used,
+                            't1': t1, 't2': t2,
+                            'diff': diff, 'dist1': dist1,
+                            'z': z_km})
+            print(f"{eid:<32} | {phase_used:<5} | {t1:>8.2f} | {t2:>8.2f}"
+                f" | {diff:>8.2f}")
+        else:
+            print(f"{eid:<32} | {'None':<5} | {'N/A':>8} | "
+                  f"{'N/A':>8} | {'N/A':>8}")
+
+    return results
 
 
 event_data = {
@@ -66,61 +139,6 @@ event_data = {
 }
 
 
-def analyze_cable_moveout(coords_df, event_dict):
-    p1 = coords_df.iloc[0]
-    p2 = coords_df.iloc[-1]
-    results = []
-
-
-    print(f"{'Event ID':<32} | {'Phase':<5} | {'T_Start':<8} | "
-          f"{'T_End':<8} | {'Diff (s)':<8}\n" + ("-" * 75))
-
-    for eid, info in event_dict.items():
-        z_km = info['dep'] / 1000.0
-        dist1 = locations2degrees(info['lat'],
-                                  info['lon'],
-                                  p1['lat'],
-                                  p1['lon'])
-        dist2 = locations2degrees(info['lat'],
-                                  info['lon'],
-                                  p2['lat'],
-                                  p2['lon'])
-
-        p_phases = ["p", "P", "Pn", "Pg"]
-        arr1_p = model.get_travel_times(z_km, dist1, phase_list=p_phases)
-        arr2_p = model.get_travel_times(z_km, dist2, phase_list=p_phases)
-        t1, t2, phase_used = None, None, None
-
-        if len(arr1_p) > 0 and len(arr2_p) > 0:
-            t1, t2 = arr1_p[0].time, arr2_p[0].time
-            phase_used = "P"
-        else:
-            s_phases = ["s", "S", "Sn", "Sg"]
-            arr1_s = model.get_travel_times(z_km, dist1, phase_list=s_phases)
-            arr2_s = model.get_travel_times(z_km, dist2, phase_list=s_phases)
-            if len(arr1_s) > 0 and len(arr2_s) > 0:
-                t1, t2 = arr1_s[0].time, arr2_s[0].time
-                phase_used = "S"
-
-        if t1 is not None and t2 is not None:
-            diff = abs(t1 - t2)
-            results.append({'id': eid, 'phase': phase_used,
-                            't1': t1, 't2': t2,
-                            'diff': diff, 'dist1': dist1,
-                            'z': z_km})
-            print(f"{eid:<32} | {phase_used:<5} | {t1:>8.2f} | {t2:>8.2f}"
-                f" | {diff:>8.2f}")
-        else:
-            print(f"{eid:<32} | {'None':<5} | {'N/A':>8} | "
-                  f"{'N/A':>8} | {'N/A':>8}")
-
-    return results
-
-
-base_dir = "/Users/ed/research_code/das"
-kkfls_coords = load_coords(os.path.join(base_dir,
-                    'das_coords_bathymetry/KKFLS_coords.xycz'))
-moveout_data = analyze_cable_moveout(kkfls_coords, event_data)
 
 for i, ev in enumerate(moveout_data):
     if i >= 10: break
