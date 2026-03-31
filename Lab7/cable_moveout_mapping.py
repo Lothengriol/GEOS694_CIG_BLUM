@@ -14,10 +14,7 @@ from obspy.taup import TauPyModel
 warnings.filterwarnings("ignore", category=UserWarning)
 
 model = TauPyModel(model="ak135")
-base_dir = "/Users/ed/research_code/das"
-kkfls_coords = load_coords(os.path.join(base_dir,
-                    'das_coords_bathymetry/KKFLS_coords.xycz'))
-
+kkfls_coords = load_coords('KKFLS_coords.xycz')
 
 def load_coords(filepath):
     """
