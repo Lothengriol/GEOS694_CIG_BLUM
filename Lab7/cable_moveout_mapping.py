@@ -17,7 +17,6 @@ model = TauPyModel(model="ak135")
 base_dir = "/Users/ed/research_code/das"
 kkfls_coords = load_coords(os.path.join(base_dir,
                     'das_coords_bathymetry/KKFLS_coords.xycz'))
-moveout_data = analyze_cable_moveout(kkfls_coords, event_data)
 
 
 def load_coords(filepath):
@@ -138,7 +137,7 @@ event_data = {
                                         "dep": 71500.0}
 }
 
-
+moveout_data = analyze_cable_moveout(kkfls_coords, event_data)
 
 for i, ev in enumerate(moveout_data):
     if i >= 10: break
@@ -195,4 +194,4 @@ for i, ev in enumerate(moveout_data):
     ax_time.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(f"moveout_plot_{eid}.png")
